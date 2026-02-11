@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VR Trader Pro V21 (Tooltip Restored)</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --input-bg: #020617;
+            --text-main: #f8fafc;
+            --text-sub: #94a3b8;
+            --accent: #8b5cf6;
+            --buy: #10b981;
+            --buy-bg: rgba(16, 185, 129, 0.05);
+            --sell: #f43f5e;
+            --sell-bg: rgba(244, 63, 94, 0.05);
+            --border: #334155;
+            --active-tab: #7c3aed;
+            --tooltip-bg: #334155;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Pretendard', sans-serif; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+
+        /* 1. 상단 대시보드 */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            text-align: center;
+            align-items: center;
+        }
+        @media (max-width: 700px) { .dashboard-grid { grid-template-columns: 1fr; } }
+
+        .dash-item { padding: 10px; position: relative; }
+        .dash-label { font-size: 0.85rem; color: var(--text-sub); margin-bottom: 5px; display: flex; justify-content: center; align-items: center; gap: 5px; cursor: help; }
+        .dash-value { font-size: 1.8rem; font-weight: 900; color: white; }
+        .dash-sub { font-size: 0.75rem; color: #64748b; margin-top: 5px; }
+
+        .v-box { border: 2px solid var(--accent); border-radius: 12px; background: rgba(139, 92, 246, 0.1); }
+        .buy-box { border: 1px solid var(--buy); border-radius: 12px; background: var(--buy-bg); }
+        .sell-box { border: 1px solid var(--sell); border-radius: 12px; background: var(--sell-bg); }
+
+        /* 2. 입력 폼 */
+        .input-section { margin-top: 10px; }
+        .input-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+        @media (max-width: 800px) { .input-grid { grid-template-columns: 1fr 1fr; } }
+
+        .input-group { position: relative; }
+        .input-group label { display: flex; align-items: center; gap: 5px; color: var(--text-sub); font-size: 0.75rem; margin-bottom: 5px; cursor: help; }
+        .input-group input { 
+            width: 100%; background: var(--input-bg); border: 1px solid var(--border); 
+            color: white; padding: 12px; border-radius: 8px; text-align: right; font-weight: bold; font-size: 1rem;
+        }
+        .input-group input:focus { outline: none; border-color: var(--accent); }
+
+        /* ======================== */
+        /* [핵심] V19 툴팁 스타일 복구 */
+        /* ======================== */
+        .help-icon {
+            display: inline-flex; justify-content: center; align-items: center;
+            width: 14px; height: 14px; background: #475569; color: white; border-radius: 50%;
+            font-size: 0.6rem; 
+        }
+        
+        /* 기본 툴팁 (입력폼용 - 위로 뜸) */
+        .tooltip-text {
+            visibility: hidden; width: 220px; background-color: var(--tooltip-bg);
+            color: #f1f5f9; text-align: left; border-radius: 6px; padding: 10px;
+            position: absolute; z-index: 50; 
+            bottom: 135%; left: 50%; /* 위로 띄움 */
+            margin-left: -110px; opacity: 0; transition: opacity 0.2s;
+            font-size: 0.75rem; line-height: 1.4; box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            border: 1px solid #475569; font-weight: normal; pointer-events: none;
+        }
+        /* 기본 툴팁 화살표 (아래쪽) */
+        .tooltip-text::after {
+            content: ""; position: absolute; top: 100%; left: 50%;
+            margin-left: -5px; border-width: 5px; border-style: solid;
+            border-color: var(--tooltip-bg) transparent transparent transparent;
+        }
+
+        /* [상단용] 아래로 뜨는 툴팁 (화면 잘림 방지) */
+        .tooltip-text.bottom {
+            bottom: auto; top: 135%; /* 아래로 띄움 */
+        }
+        /* 아래로 뜨는 툴팁 화살표 (위쪽) */
+        .tooltip-text.bottom::after {
+            top: auto; bottom: 100%;
+            border-color: transparent transparent var(--tooltip-bg) transparent;
+        }
+
+        /* 호버 시 표시 */
+        .help-icon:hover + .tooltip-text, 
+        .dash-label:hover .tooltip-text,
+        .input-group label:hover .tooltip-text {
+            visibility: visible; opacity: 1;
+        }
+
+        /* 모드 버튼 */
+        .mode-group { display: flex; gap: 5px; margin-bottom: 15px; background: var(--input-bg); padding: 4px; border-radius: 8px; }
+        .mode-btn { flex: 1; background: transparent; border: none; color: var(--text-sub); padding: 8px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; }
+        .mode-btn.active { background: var(--active-tab); color: white; }
+
+        /* 3. LOC 좌우 분할 */
+        .split-container { display: flex; gap: 15px; margin-top: 10px; }
+        @media (max-width: 768px) { .split-container { flex-direction: column-reverse; } }
+
+        .half-panel { flex: 1; display: flex; flex-direction: column; }
+        
+        .panel-header { font-size: 1rem; font-weight: bold; padding: 10px; margin-bottom: 10px; border-radius: 8px; text-align: center; display: flex; justify-content: space-between; align-items: center; }
+        .header-buy { background: var(--buy-bg); color: var(--buy); border: 1px solid var(--buy); }
+        .header-sell { background: var(--sell-bg); color: var(--sell); border: 1px solid var(--sell); }
+
+        .table-wrap { overflow-y: auto; max-height: 500px; border-radius: 8px; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th { position: sticky; top: 0; background: var(--card-bg); color: var(--text-sub); padding: 10px; border-bottom: 1px solid var(--border); z-index: 2; font-size: 0.8rem; }
+        td { padding: 10px 8px; border-bottom: 1px solid #334155; text-align: center; font-variant-numeric: tabular-nums; }
+        
+        .price-cell { font-weight: bold; font-size: 1.05rem; }
+        .qty-cell { color: var(--text-sub); font-size: 0.85rem; }
+
+        .total-cash-info { grid-column: span 4; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-top: 5px; }
+        @media (max-width: 800px) { .total-cash-info { grid-column: span 2; } }
+
+        /* 매도 공식 박스 */
+        .formula-box { margin-top: 15px; padding: 15px; background: rgba(244, 63, 94, 0.05); border: 1px dashed var(--sell); border-radius: 8px; font-size: 0.85rem; color: var(--text-sub); line-height: 1.6; }
+        .formula-box strong { color: var(--sell); display: block; margin-bottom: 5px; font-size: 0.95rem; }
+        .formula-code { background: #020617; padding: 8px; border-radius: 4px; font-family: monospace; color: #e2e8f0; display: block; margin: 5px 0; text-align: center; border: 1px solid #334155; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div class="card">
+        <div class="dashboard-grid">
+            <div class="dash-item buy-box">
+                <div class="dash-label">
+                    BAND LOW (매수 시작)
+                    <span class="help-icon">?</span>
+                    <span class="tooltip-text bottom">
+                        이 가격 이하로 떨어지면 매수를 시작합니다.<br>
+                        (V2에서 밴드% 만큼 뺀 가격)
+                    </span>
+                </div>
+                <div class="dash-value" style="color:var(--buy)" id="dispBandLow">$0.00</div>
+            </div>
+            <div class="dash-item v-box">
+                <div class="dash-label">
+                    NEXT TARGET (V2)
+                    <span class="help-icon">?</span>
+                    <span class="tooltip-text bottom">
+                        이번 2주(1사이클) 동안 목표로 하는 내 계좌의 총 자산 가치입니다.<br>
+                        (V1 + Pool성장분 + 적립금)
+                    </span>
+                </div>
+                <div class="dash-value" id="dispV2">$0.00</div>
+                <div class="dash-sub">V1 + (Pool÷G) ± Flow</div>
+            </div>
+            <div class="dash-item sell-box">
+                <div class="dash-label">
+                    BAND HIGH (매도 시작)
+                    <span class="help-icon">?</span>
+                    <span class="tooltip-text bottom">
+                        이 가격 이상으로 오르면 매도를 시작합니다.<br>
+                        (V2에서 밴드% 만큼 더한 가격)
+                    </span>
+                </div>
+                <div class="dash-value" style="color:var(--sell)" id="dispBandHigh">$0.00</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card input-section">
+        <div class="mode-group">
+            <button class="mode-btn active" onclick="setMode(75, this)">적립식(75%)</button>
+            <button class="mode-btn" onclick="setMode(50, this)">거치식(50%)</button>
+            <button class="mode-btn" onclick="setMode(25, this)">인출식(25%)</button>
+            <button class="mode-btn" onclick="enableCustomInput(this)">직접설정</button>
+        </div>
+
+        <div class="input-grid">
+            <div class="input-group">
+                <label>직전 목표 V1 ($) <span class="help-icon">?</span><span class="tooltip-text">2주 전(지난 사이클)의 목표가입니다.<br>처음이라면 총 투자원금을 넣으세요.</span></label>
+                <input type="number" id="v1" value="10000" step="0.01">
+            </div>
+            <div class="input-group">
+                <label>보유 수량 (Qty) <span class="help-icon">?</span><span class="tooltip-text">현재 계좌에 있는 주식 수량입니다.</span></label>
+                <input type="number" id="qty" value="100">
+            </div>
+            <div class="input-group">
+                <label>G값 (기울기) <span class="help-icon">?</span><span class="tooltip-text">목표 성장 속도입니다.<br>10: 보통 (적립/거치)<br>20: 보수적 (인출식)</span></label>
+                <input type="number" id="gVal" value="10">
+            </div>
+            <div class="input-group">
+                <label>허용 밴드 (%) <span class="help-icon">?</span><span class="tooltip-text">목표가 대비 위아래로 허용하는 변동폭입니다.<br>보통 15%를 사용합니다.</span></label>
+                <input type="number" id="band" value="15">
+            </div>
+
+            <div class="input-group">
+                <label style="color:#a5b4fc">Pool ($) - 성장동력 <span class="help-icon">?</span><span class="tooltip-text">V값을 성장시키는 기초 자산(예수금)입니다.<br>보통 사이클 시작 시점의 현금입니다.</span></label>
+                <input type="number" id="pool" value="5000" step="0.01" style="border-color:#a5b4fc">
+            </div>
+            <div class="input-group">
+                <label style="color:#10b981">적립/인출 ($) - Flow <span class="help-icon">?</span><span class="tooltip-text">이번에 추가로 넣은 돈(양수)이나,<br>생활비로 뺀 돈(음수)을 입력하세요.</span></label>
+                <input type="number" id="flow" value="0" step="0.01" style="border-color:#10b981">
+            </div>
+            
+            <div class="input-group">
+                <label>POOL 한도 (%) <span class="help-icon">?</span><span class="tooltip-text">현금 고갈을 막기 위해<br>가용 현금의 일부만 사용합니다.</span></label>
+                <input type="number" id="poolLimitPercent" value="75" readonly>
+            </div>
+            
+            <div class="total-cash-info">
+                <span style="color:#aaa">💰 매수 가용 금액 = (Pool + Flow) × 한도%</span>
+                <strong style="color:white; font-size:1.1rem;" id="limitAmt">$0.00</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="split-container">
+        
+        <div class="half-panel">
+            <div class="panel-header header-buy">
+                <span>📉 매수 예약 (Buy)</span>
+                <span style="font-size:0.8rem; opacity:0.8">한도 소진 시까지</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="20%">차수</th>
+                            <th width="30%">지정가 (LOC)</th>
+                            <th width="25%">수량</th>
+                            <th width="25%">누적액</th>
+                        </tr>
+                    </thead>
+                    <tbody id="buyBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="half-panel">
+            <div class="panel-header header-sell">
+                <span>📈 매도 예약 (Sell)</span>
+                <span style="font-size:0.8rem; opacity:0.8">상위 10호가</span>
+            </div>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="20%">차수</th>
+                            <th width="30%">지정가 (LOC)</th>
+                            <th width="25%">수량</th>
+                            <th width="25%">누적액</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sellBody"></tbody>
+                </table>
+            </div>
+            
+            <div class="formula-box">
+                <strong>💡 11번째 이후 매도 계산법</strong>
+                표가 너무 길어지는 것을 방지하기 위해 상위 10개만 표시됩니다.<br>
+                그 이후 물량은 아래 공식으로 계산하여 예약하세요.
+                <span class="formula-code">
+                    지정가 = 밴드상단가 ÷ (현재수량 - 누적매도수)
+                </span>
+                <div style="margin-top:5px; font-size:0.8rem; color:#94a3b8;">
+                    예) 11번째 매도: <span id="exPrice" style="color:var(--sell); font-weight:bold;">$0.00</span> ÷ (수량 - 10)
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    function formatNum(num) {
+        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function setMode(percent, btn) {
+        const input = document.getElementById('poolLimitPercent');
+        const gInput = document.getElementById('gVal');
+
+        input.value = percent;
+        input.readOnly = true;
+
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+
+        // G값 자동 변경 (인출식=20, 나머지=10)
+        if (percent === 25) gInput.value = 20; 
+        else gInput.value = 10;
+
+        calc();
+    }
+
+    function enableCustomInput(btn) {
+        const input = document.getElementById('poolLimitPercent');
+        input.readOnly = false;
+        input.focus();
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        if(btn) btn.classList.add('active');
+    }
+
+    function calc() {
+        const v1 = parseFloat(document.getElementById('v1').value) || 0;
+        const qty = parseFloat(document.getElementById('qty').value) || 0;
+        const g = parseFloat(document.getElementById('gVal').value) || 10;
+        const band = parseFloat(document.getElementById('band').value) || 15;
+        
+        const pool = parseFloat(document.getElementById('pool').value) || 0;
+        const flow = parseFloat(document.getElementById('flow').value) || 0;
+        const limitPercent = parseFloat(document.getElementById('poolLimitPercent').value) || 75;
+
+        // V2 계산
+        const v2 = v1 + (pool / g) + flow;
+        const bandLow = v2 * (1 - band/100);
+        const bandHigh = v2 * (1 + band/100);
+
+        document.getElementById('dispV2').innerText = `$${formatNum(v2)}`;
+        document.getElementById('dispBandLow').innerText = `$${formatNum(bandLow)}`;
+        document.getElementById('dispBandHigh').innerText = `$${formatNum(bandHigh)}`;
+        
+        // 예시 가격 업데이트 (밴드상단)
+        document.getElementById('exPrice').innerText = `$${formatNum(bandHigh)}`;
+
+        // 매수 가용 금액
+        const totalCash = pool + flow;
+        const maxSpend = totalCash * (limitPercent / 100);
+        document.getElementById('limitAmt').innerHTML = `$${formatNum(maxSpend)} <span style="font-size:0.8rem; color:#94a3b8">(Total $${formatNum(totalCash)})</span>`;
+
+        // LOC 매수 테이블 (좌측)
+        const buyBody = document.getElementById('buyBody');
+        buyBody.innerHTML = '';
+        
+        let accumulatedCost = 0;
+        let n = 0; 
+        
+        while(true) {
+            const buyCount = n + 1;
+            const denominator = qty + n; 
+            const price = bandLow / denominator;
+            const cost = price * 1; 
+
+            if (accumulatedCost + cost > maxSpend) {
+                if (n === 0) {
+                     buyBody.innerHTML = `<tr><td colspan="4" style="padding:20px; color:#ef4444;">가용 자금이 부족합니다.</td></tr>`;
+                } else {
+                    buyBody.innerHTML += `<tr><td colspan="4" style="color:#ef4444; font-size:0.85rem; padding:10px;">⛔ 한도 도달 (누적 $${formatNum(accumulatedCost)})</td></tr>`;
+                }
+                break;
+            }
+            accumulatedCost += cost;
+
+            buyBody.innerHTML += `
+                <tr>
+                    <td>${buyCount}차</td>
+                    <td class="price-cell" style="color:var(--buy)">$${formatNum(price)}</td>
+                    <td class="qty-cell">+${buyCount} <span style="font-size:0.75rem">(${denominator})</span></td>
+                    <td style="color:#94a3b8">$${formatNum(accumulatedCost)}</td>
+                </tr>
+            `;
+
+            n++;
+            if(n > 200) break; // 안전장치
+        }
+
+        // LOC 매도 테이블 (우측) - 10개 제한
+        const sellBody = document.getElementById('sellBody');
+        sellBody.innerHTML = '';
+
+        const sellLimit = Math.min(qty, 10); // 최대 10개
+
+        for(let i=0; i < sellLimit; i++) {
+            const sellCount = i + 1;
+            const denominator = qty - i;
+            
+            if(denominator <= 0) break;
+            
+            const price = bandHigh / denominator;
+            const totalAmount = price * sellCount;
+
+            sellBody.innerHTML += `
+                <tr>
+                    <td>${sellCount}차</td>
+                    <td class="price-cell" style="color:var(--sell)">$${formatNum(price)}</td>
+                    <td class="qty-cell">-${sellCount} <span style="font-size:0.75rem">(${denominator})</span></td>
+                    <td style="color:#94a3b8">$${formatNum(totalAmount)}</td>
+                </tr>
+            `;
+        }
+        
+        if (qty === 0) {
+             sellBody.innerHTML = `<tr><td colspan="4" style="padding:20px; color:#94a3b8;">보유 주식이 없습니다.</td></tr>`;
+        }
+    }
+
+    document.querySelectorAll('input').forEach(i => i.addEventListener('input', calc));
+    window.onload = calc;
+
+</script>
+</body>
+</html>
